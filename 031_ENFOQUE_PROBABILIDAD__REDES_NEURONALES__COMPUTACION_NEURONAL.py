@@ -1,66 +1,59 @@
-import numpy as np
+#Practica: 031_ENFOQUE_PROBABILIDAD_REDES_NEURONALES_COMPUTACION_NEURONAL
+#Alumno: IVAN_DOMINGUEZ
+#Registro: 21310234
+#Grupo: 7F1
 
-class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, output_size):
-        # Inicializa los pesos de las conexiones entre la capa de entrada y la capa oculta
-        self.W1 = np.random.randn(input_size, hidden_size)
-        # Inicializa los pesos de las conexiones entre la capa oculta y la capa de salida
-        self.W2 = np.random.randn(hidden_size, output_size)
-        # Inicializa los sesgos de la capa oculta
-        self.b1 = np.zeros((1, hidden_size))
-        # Inicializa los sesgos de la capa de salida
-        self.b2 = np.zeros((1, output_size))
+# Importamos las bibliotecas necesarias
+import numpy as np  # Para operaciones matemáticas y manejo de matrices
+from tensorflow.keras.models import Sequential  # Para definir el modelo de red neuronal secuencial
+from tensorflow.keras.layers import Dense, Input  # Para añadir capas y entradas a la red neuronal
+from sklearn.datasets import load_iris  # Conjunto de datos de Iris
+from sklearn.model_selection import train_test_split  # Para dividir los datos en entrenamiento y prueba
+from sklearn.preprocessing import OneHotEncoder  # Para codificar las etiquetas de salida
 
-    def sigmoid(self, x):
-        # Función de activación sigmoide
-        return 1 / (1 + np.exp(-x))
+# Cargamos el conjunto de datos Iris
+data = load_iris()
 
-    def forward(self, x):
-        # Propagación hacia adelante
-        # Calcula la salida de la capa oculta
-        self.z1 = np.dot(x, self.W1) + self.b1
-        self.a1 = self.sigmoid(self.z1)
-        # Calcula la salida de la capa de salida
-        self.z2 = np.dot(self.a1, self.W2) + self.b2
-        self.a2 = self.sigmoid(self.z2)
-        return self.a2
+# 'data.data' contiene las 4 características: largo y ancho del pétalo y sépalo.
+X = data.data  # Características de entrada
+# 'data.target' contiene las etiquetas de clase, indicando el tipo de flor.
+y = data.target.reshape(-1, 1)  # Reshape para tenerlo en forma de columna
 
-    def sigmoid_derivative(self, x):
-        # Derivada de la función sigmoide
-        return x * (1 - x)
+# Codificación One-Hot de las etiquetas (para que sea adecuado para clasificación).
+encoder = OneHotEncoder()
+y_encoded = encoder.fit_transform(y).toarray()
 
-    def backward(self, x, y, lr):
-        # Propagación hacia atrás (backpropagation)
-        # Calcula el error en la capa de salida
-        self.error_output = y - self.a2
-        # Calcula el gradiente de la capa de salida
-        self.delta_output = self.error_output * self.sigmoid_derivative(self.a2)
-        # Calcula el error en la capa oculta
-        self.error_hidden = np.dot(self.delta_output, self.W2.T)
-        # Calcula el gradiente de la capa oculta
-        self.delta_hidden = self.error_hidden * self.sigmoid_derivative(self.a1)
-        # Actualiza los pesos y sesgos
-        self.W2 += np.dot(self.a1.T, self.delta_output) * lr
-        self.b2 += np.sum(self.delta_output, axis=0) * lr
-        self.W1 += np.dot(x.T, self.delta_hidden) * lr
-        self.b1 += np.sum(self.delta_hidden, axis=0) * lr
+# Dividimos los datos en conjuntos de entrenamiento y prueba (80% entrenamiento, 20% prueba).
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-    def train(self, X, y, epochs, lr):
-        # Entrena la red neuronal
-        for epoch in range(epochs):
-            # Propagación hacia adelante y hacia atrás
-            output = self.forward(X)
-            self.backward(X, y, lr)
-            # Calcula la pérdida en cada iteración
-            loss = np.mean(np.square(y - output))
-            if epoch % 100 == 0:
-                print(f'Epoch {epoch}, Loss: {loss}')
+# Creamos un modelo de red neuronal secuencial.
+model = Sequential()
 
-# Ejemplo de uso
-if __name__ == "__main__":
-    # Datos de entrada y salida
-    X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-    y = np.array([[0], [1], [1], [0]])
-    # Crear y entrenar la red neuronal
-    nn = NeuralNetwork(input_size=2, hidden_size=3, output_size=1)
-    nn.train(X, y, epochs=1000, lr=0.1)
+# Añadimos la capa de entrada usando la clase Input con el tamaño de las entradas.
+model.add(Input(shape=(4,)))  # 4 entradas (características de las flores)
+
+# Añadimos la primera capa de la red con 8 neuronas y activación ReLU.
+model.add(Dense(8, activation='relu'))  # Capa oculta
+
+# Añadimos otra capa oculta con 8 neuronas y activación ReLU.
+model.add(Dense(8, activation='relu'))  # Otra capa oculta
+
+# Añadimos la capa de salida con 3 neuronas (una por cada clase) y activación softmax.
+model.add(Dense(3, activation='softmax'))  # Capa de salida para clasificación
+
+# Compilamos el modelo.
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Entrenamos el modelo con los datos de entrenamiento.
+model.fit(X_train, y_train, epochs=100, batch_size=5, verbose=1)
+
+# Evaluamos el modelo con los datos de prueba, para verificar su precisión.
+loss, accuracy = model.evaluate(X_test, y_test)
+
+# Imprimimos el resultado de la precisión en el conjunto de prueba.
+print(f'Precisión del modelo en el conjunto de prueba: {accuracy * 100:.2f}%')
+
+#Este programa implementa una red neuronal simple para clasificar flores basándose en medidas de
+#pétalos y sépalos. A través del entrenamiento, la red aprende a hacer predicciones sobre qué tipo de
+#flor es, dado un conjunto de características. Este tipo de red neuronal es un ejemplo clásico de
+#aprendizaje supervisado en el que se asignan etiquetas a entradas específicas.
